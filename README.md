@@ -4,6 +4,8 @@
 
 โปรเจคนี้เป็น **Template สำหรับ Class Project** ในรายวิชาการพัฒนา Backend ด้วย NestJS Framework
 
+**Repository:** [https://github.com/42bangkok-classroom/oop-typescript-final-project-2026](https://github.com/42bangkok-classroom/oop-typescript-final-project-2026)
+
 วัตถุประสงค์ของโปรเจคนี้คือให้นักศึกษาฝึก:
 
 * การออกแบบและพัฒนา REST API ตามมาตรฐาน
