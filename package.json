@@ -7,17 +7,26 @@
   "license": "MIT",
   "contributors": [
     {
-      "fullname": "Surawitpakeepol",
-      "username": "suraiwtpakeepol",
-      "studentId": "68010067"
+      "name": "Surawitpakeepol",
+      "username01": "suraiwtpakeepol",
+      "studentId01": "68010067",
+      "fullname02": "Kanthapat maneewan",
+      "username02": "username1",
+      "studentId02": "68010067",
+      "fullname03": "Chittanat Kanthaaet",
+      "username03": "Chittanat",
+      "studentId03": "68010142",
+      "fullname04": "NATTHAWUT PUTTHONG",
+      "username04": "Guyverymad",
+      "studentId04": "68010375"
     }
   ],
   "project": {
     "model": {
-      "id": null,
-      "name": null
+      "id": "3",
+      "name": "Event Management System Core Models"
     },
-    "sumStudentId": null
+    "sumStudentId": 272041763
   },
   "scripts": {
     "build": "nest build",
