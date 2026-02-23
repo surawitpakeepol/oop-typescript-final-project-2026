@@ -37,4 +37,7 @@ export class CreateEventDto {
 
   @IsISO8601()
   registrationDeadline!: string;
+
+    status?: "abc";
+
 }
