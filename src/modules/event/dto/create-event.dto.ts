@@ -1,6 +1,6 @@
 import { IsEnum, IsISO8601, IsNotEmpty, IsNumber, IsString, MaxLength, Min } from 'class-validator';
 import { EventCategory, EventPriority } from '../entities/event.entity';
-
+import { EventStatus } from '../entities/event.entity';
 export class CreateEventDto {
   @IsNotEmpty()
   @IsString()
@@ -38,6 +38,7 @@ export class CreateEventDto {
   @IsISO8601()
   registrationDeadline!: string;
 
-
+  @IsEnum(EventStatus)
+  status!: EventStatus;
 
 }
