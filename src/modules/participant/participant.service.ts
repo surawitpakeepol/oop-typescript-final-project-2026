@@ -11,60 +11,74 @@ function generateId(): string {
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 }
 
-async function readParticipants(): Promise<any[]> {
+
+export interface ParticipantRecord {
+  id: string
+  userId: string
+  name: string
+  email: string
+  createdAt: string
+  updatedAt: string
+}
+
+
+async function readParticipants(): Promise<ParticipantRecord[]> {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
     const raw = await fs.readFile(PARTICIPANTS_FILE, 'utf8').catch(() => '[]');
-    return JSON.parse(raw || '[]');
+    return JSON.parse(raw) as ParticipantRecord[];
   } catch {
     return [];
   }
 }
 
-async function writeParticipants(items: any[]) {
+
+async function writeParticipants(items: ParticipantRecord[]): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(PARTICIPANTS_FILE, JSON.stringify(items, null, 2), 'utf8');
+  await fs.writeFile(
+    PARTICIPANTS_FILE,
+    JSON.stringify(items, null, 2),
+    'utf8',
+  );
 }
 
 @Injectable()
 export class ParticipantService {
 
-  async create(createParticipantDto: CreateParticipantDto) {
+  async create(dto: CreateParticipantDto): Promise<ParticipantRecord> {
+
     const participants = await readParticipants();
 
-    if (!createParticipantDto.name) {
-      throw new BadRequestException('name is required');
-    }
-
-    if (!createParticipantDto.email) {
-      throw new BadRequestException('email is required');
-    }
-
-    if (participants.find(p => p.email === createParticipantDto.email)) {
+    if (participants.some(p => p.email === dto.email)) {
       throw new BadRequestException('Email must be unique');
     }
 
     const now = new Date().toISOString();
 
-    const entity = {
+    const entity: ParticipantRecord = {
       id: generateId(),
-      ...createParticipantDto,
+      userId: dto.userId,
+      name: dto.name,
+      email: dto.email,
       createdAt: now,
       updatedAt: now,
     };
 
     participants.push(entity);
+
     await writeParticipants(participants);
 
     return entity;
   }
 
-  async findAll() {
-    return await readParticipants();
+  async findAll(): Promise<ParticipantRecord[]> {
+    return readParticipants();
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<ParticipantRecord> {
+
     const participants = await readParticipants();
+
     const participant = participants.find(p => p.id === id);
 
     if (!participant) {
@@ -74,8 +88,13 @@ export class ParticipantService {
     return participant;
   }
 
-  async update(id: string, updateParticipantDto: UpdateParticipantDto) {
+  async update(
+    id: string,
+    dto: UpdateParticipantDto,
+  ): Promise<ParticipantRecord> {
+
     const participants = await readParticipants();
+
     const index = participants.findIndex(p => p.id === id);
 
     if (index === -1) {
@@ -83,15 +102,15 @@ export class ParticipantService {
     }
 
     if (
-      updateParticipantDto.email &&
-      participants.some(p => p.email === updateParticipantDto.email && p.id !== id)
+      dto.email &&
+      participants.some(p => p.email === dto.email && p.id !== id)
     ) {
       throw new BadRequestException('Email must be unique');
     }
 
-    const updated = {
+    const updated: ParticipantRecord = {
       ...participants[index],
-      ...updateParticipantDto,
+      ...dto,
       updatedAt: new Date().toISOString(),
     };
 
@@ -102,8 +121,10 @@ export class ParticipantService {
     return updated;
   }
 
-  async remove(id: string) {
+  async remove(id: string): Promise<void> {
+
     const participants = await readParticipants();
+
     const index = participants.findIndex(p => p.id === id);
 
     if (index === -1) {
@@ -111,8 +132,7 @@ export class ParticipantService {
     }
 
     participants.splice(index, 1);
-    await writeParticipants(participants);
 
-    return;
+    await writeParticipants(participants);
   }
 }

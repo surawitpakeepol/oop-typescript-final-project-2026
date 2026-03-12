@@ -12,27 +12,36 @@ function generateId(): string {
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 }
 
-async function readEvents(): Promise<any[]> {
+// type สำหรับข้อมูลที่เก็บในไฟล์
+type EventRecord = Omit<
+  Event,
+  | 'getAvailableSeats'
+  | 'isRegistrationOpen'
+  | 'isEventActive'
+  | 'addParticipant'
+  | 'removeParticipant'
+>;
+
+async function readEvents(): Promise<EventRecord[]> {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
     const raw = await fs.readFile(EVENTS_FILE, 'utf8').catch(() => '[]');
-    return JSON.parse(raw || '[]');
+    return JSON.parse(raw || '[]') as EventRecord[];
   } catch {
     return [];
   }
 }
 
-async function writeEvents(items: any[]) {
+async function writeEvents(items: EventRecord[]) {
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(EVENTS_FILE, JSON.stringify(items, null, 2), 'utf8');
 }
 
 @Injectable()
 export class EventService {
-  async create(createEventDto: CreateEventDto) {
+  async create(createEventDto: CreateEventDto): Promise<EventRecord> {
     const events = await readEvents();
 
-    // validation rules
     const start = new Date(createEventDto.startDate);
     const end = new Date(createEventDto.endDate);
     const deadline = new Date(createEventDto.registrationDeadline);
@@ -40,18 +49,24 @@ export class EventService {
     if (!(start < end)) {
       throw new BadRequestException('startDate must be before endDate');
     }
+
     if (deadline > start) {
-      throw new BadRequestException('registrationDeadline must be on or before startDate');
+      throw new BadRequestException(
+        'registrationDeadline must be on or before startDate',
+      );
     }
+
     if (createEventDto.capacity == null || createEventDto.capacity <= 0) {
       throw new BadRequestException('capacity must be > 0');
     }
+
     if (events.find(e => e.name === createEventDto.name)) {
       throw new BadRequestException('Event name must be unique');
     }
 
     const now = new Date().toISOString();
-    const entity: Event = {
+
+    const entity: EventRecord = {
       id: generateId(),
       name: createEventDto.name,
       description: createEventDto.description,
@@ -67,68 +82,92 @@ export class EventService {
       registrationDeadline: createEventDto.registrationDeadline,
       createdAt: now,
       updatedAt: now,
-      getAvailableSeats() { return Math.max(0, (this.capacity||0) - (this.currentParticipants||0)); },
-      isRegistrationOpen(nowDate = new Date()){ if(!this.registrationDeadline) return false; if(this.status === EventStatus.CANCELLED || this.status === EventStatus.COMPLETED) return false; return new Date(this.registrationDeadline) >= nowDate; },
-      isEventActive(nowDate = new Date()){ if(!this.startDate || !this.endDate) return false; return new Date(this.startDate) <= nowDate && nowDate <= new Date(this.endDate); },
-      addParticipant() { if(this.currentParticipants==null) this.currentParticipants = 0; if(this.capacity!=null && this.currentParticipants >= this.capacity) throw new Error('Event is full'); this.currentParticipants += 1; this.updatedAt = new Date().toISOString(); },
-      removeParticipant() { if(this.currentParticipants==null) this.currentParticipants = 0; this.currentParticipants = Math.max(0, this.currentParticipants - 1); this.updatedAt = new Date().toISOString(); },
-    } as any;
+    };
 
     events.push(entity);
     await writeEvents(events);
+
     return entity;
   }
 
-  async findAll() {
+  async findAll(): Promise<EventRecord[]> {
     return await readEvents();
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<EventRecord> {
     const events = await readEvents();
+
     const ev = events.find(e => e.id === id);
-    if (!ev) throw new NotFoundException('Event not found');
+
+    if (!ev) {
+      throw new NotFoundException('Event not found');
+    }
+
     return ev;
   }
 
-  async update(id: string, updateEventDto: UpdateEventDto) {
+  async update(id: string, updateEventDto: UpdateEventDto): Promise<EventRecord> {
     const events = await readEvents();
+
     const idx = events.findIndex(e => e.id === id);
-    if (idx === -1) throw new NotFoundException('Event not found');
+
+    if (idx === -1) {
+      throw new NotFoundException('Event not found');
+    }
 
     const target = events[idx];
 
-    if (updateEventDto.name && events.some(e => e.name === updateEventDto.name && e.id !== id)) {
+    if (
+      updateEventDto.name &&
+      events.some(e => e.name === updateEventDto.name && e.id !== id)
+    ) {
       throw new BadRequestException('Event name must be unique');
     }
 
-    const merged = { ...target, ...updateEventDto, updatedAt: new Date().toISOString() };
+    const merged: EventRecord = {
+      ...target,
+      ...updateEventDto,
+      updatedAt: new Date().toISOString(),
+    };
 
-    // validate date constraints if present
     const start = merged.startDate ? new Date(merged.startDate) : null;
     const end = merged.endDate ? new Date(merged.endDate) : null;
-    const deadline = merged.registrationDeadline ? new Date(merged.registrationDeadline) : null;
+    const deadline = merged.registrationDeadline
+      ? new Date(merged.registrationDeadline)
+      : null;
 
     if (start && end && !(start < end)) {
       throw new BadRequestException('startDate must be before endDate');
     }
+
     if (deadline && start && deadline > start) {
-      throw new BadRequestException('registrationDeadline must be on or before startDate');
+      throw new BadRequestException(
+        'registrationDeadline must be on or before startDate',
+      );
     }
+
     if (merged.capacity != null && merged.capacity <= 0) {
       throw new BadRequestException('capacity must be > 0');
     }
 
     events[idx] = merged;
+
     await writeEvents(events);
+
     return merged;
   }
 
-  async remove(id: string) {
+  async remove(id: string): Promise<void> {
     const events = await readEvents();
+
     const idx = events.findIndex(e => e.id === id);
-    if (idx === -1) throw new NotFoundException('Event not found');
+
+    if (idx === -1) {
+      throw new NotFoundException('Event not found');
+    }
+
     events.splice(idx, 1);
+
     await writeEvents(events);
-    return;
   }
 }
